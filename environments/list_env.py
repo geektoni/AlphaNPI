@@ -653,10 +653,10 @@ class QuickSortListEnv(Environment):
         return bool
 
     def _lshift_precondition(self):
-        return self.p1_pos > 0 or self.p2_pos > 0
+        return self.p1_pos > 0 or self.p2_pos > 0 or self.p3_pos > 0
 
     def _rshift_precondition(self):
-        return self.p1_pos < self.length-1 or self.p2_pos < self.length-1
+        return self.p1_pos < self.length-1 or self.p2_pos < self.length-1 or self.p3_pos < self.length-1
 
     def _bubble_precondition(self):
         bool = self.p1_pos == 0
