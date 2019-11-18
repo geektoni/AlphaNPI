@@ -446,7 +446,7 @@ class QuickSortListEnv(Environment):
         self.has_been_reset = False
 
         if hierarchy:
-            self.programs_library = {'PTR_1_LEFT': {'level': 0, 'recursive': False},
+            self.programs_library = OrderedDict(sorted({'PTR_1_LEFT': {'level': 0, 'recursive': False},
                                      'STOP': {'level': -1, 'recursive': False},
                                      'PTR_2_LEFT': {'level': 0, 'recursive': False},
                                      'PTR_1_RIGHT': {'level': 0, 'recursive': False},
@@ -460,39 +460,51 @@ class QuickSortListEnv(Environment):
                                      'POP': {'level': 0, 'recursive': False},
                                      'RSHIFT': {'level': 1, 'recursive': False},
                                      'LSHIFT': {'level': 1, 'recursive': False},
-                                     'COMPSWAP': {'level': 1, 'recursive': False},
+                                     #'PARTITION_UPDATE': {'level': 1, 'recursive': False},
+                                     #'COMPSWAP': {'level': 1, 'recursive': False},
+                                     'COMPSWAP_PARTITION': {'level':1, 'recursive': False},
                                      'RESET': {'level': 2, 'recursive': False},
                                      'PARTITION': {'level': 2, 'recursive': False},
-                                     'QUICKSORT': {'level': 3, 'recursive': False}}
+                                     'QUICKSORT': {'level': 3, 'recursive': False}}))
             for idx, key in enumerate(sorted(list(self.programs_library.keys()))):
                 self.programs_library[key]['index'] = idx
 
-            self.prog_to_func = {'STOP': self._stop,
+            self.prog_to_func = OrderedDict(sorted({'STOP': self._stop,
                                  'PTR_1_LEFT': self._ptr_1_left,
                                  'PTR_2_LEFT': self._ptr_2_left,
                                  'PTR_1_RIGHT': self._ptr_1_right,
                                  'PTR_2_RIGHT': self._ptr_2_right,
-                                 'SWAP': self._swap}
+                                 'PTR_3_LEFT': self._ptr_3_left,
+                                 'PTR_3_RIGHT': self._ptr_3_right,
+                                 'PUSH': self._push,
+                                 'POP': self._pop,
+                                 'SWAP': self._swap,
+                                 'SWAP_2': self._swap_2,
+                                 'SWAP_3': self._swap_3}))
 
             self.prog_to_precondition = {'STOP': self._stop_precondition,
                                          'RSHIFT': self._rshift_precondition,
                                          'LSHIFT': self._lshift_precondition,
-                                         'COMPSWAP': self._compswap_precondition,
+                                         #'COMPSWAP': self._compswap_precondition,
+                                         'COMPSWAP_PARTITION': self._compswap_partition_precondition,
                                          'RESET': self._reset_precondition,
-                                         'BUBBLE': self._bubble_precondition,
-                                         'BUBBLESORT': self._bubblesort_precondition,
+                                         'PARTITION': self._partition_precondition,
+                                         'QUICKSORT': self._quicksort_precondition,
                                          'PTR_1_LEFT': self._ptr_1_left_precondition,
                                          'PTR_2_LEFT': self._ptr_2_left_precondition,
                                          'PTR_1_RIGHT': self._ptr_1_right_precondition,
                                          'PTR_2_RIGHT': self._ptr_2_right_precondition,
+                                         'PTR_3_LEFT': self._ptr_3_left_precondition,
+                                         'PTR_3_RIGHT': self._ptr_3_right_precondition,
                                          'SWAP': self._swap_precondition}
 
             self.prog_to_postcondition = {'RSHIFT': self._rshift_postcondition,
                                           'LSHIFT': self._lshift_postcondition,
-                                          'COMPSWAP': self._compswap_postcondition,
+                                          #'COMPSWAP': self._compswap_postcondition,
+                                          'COMPSWAP_PARTITION': self._compswap_partition_postcondition,
                                           'RESET': self._reset_postcondition,
-                                          'BUBBLE': self._bubble_postcondition,
-                                          'BUBBLESORT': self._bubblesort_postcondition}
+                                          'PARTITION': self._partition_postcondition,
+                                          'QUICKSORT': self._quicksort_postcondition}
 
         else:
             # In no hierarchy mode, the only non-zero program is Bubblesort
@@ -566,12 +578,65 @@ class QuickSortListEnv(Environment):
     def _ptr_2_right_precondition(self):
         return self.p2_pos < self.length-1
 
+    def _ptr_3_left(self):
+        """Move pointer 3 to the right."""
+        if self.p3_pos < (self.length - 1):
+            self.p3_pos += 1
+
+    def _ptr_3_left_precondition(self):
+        return self.p3_pos < self.length-1
+
+    def _ptr_3_right(self):
+        """Move pointer 3 to the right."""
+        if self.p3_pos < (self.length - 1):
+            self.p3_pos += 1
+
+    def _ptr_3_right_precondition(self):
+        return self.p2_pos < self.length-1
+
     def _swap(self):
         """Swap the elements pointed by pointers 1 and 2."""
         self.scratchpad_ints[[self.p1_pos, self.p2_pos]] = self.scratchpad_ints[[self.p2_pos, self.p1_pos]]
 
     def _swap_precondition(self):
         return self.p1_pos != self.p2_pos
+
+    def _swap_2(self):
+        """Swap the elements pointed by pointers 2 and 3."""
+        self.scratchpad_ints[[self.p2_pos, self.p3_pos]] = self.scratchpad_ints[[self.p3_pos, self.p2_pos]]
+
+    def _swap_2_precondition(self):
+        return self.p2_pos != self.p3_pos
+
+    def _swap_3(self):
+        """Swap the elements pointed by pointers 3 and 1."""
+        self.scratchpad_ints[[self.p3_pos, self.p1_pos]] = self.scratchpad_ints[[self.p1_pos, self.p3_pos]]
+
+    def _swap_3_precondition(self):
+        return self.p3_pos != self.p1_pos
+
+    def _push(self):
+        """Push the pointers positions inside the stack"""
+        assert self._push_precondition(), 'precondition not verified'
+        self.prog_stack.append(self.p3_pos+1)
+        self.prog_stack.append(self.p2_pos)
+        self.prog_stack.append(self.p3_pos+1)
+        self.prog_stack.append(self.p1_pos)
+        self.prog_stack.append(self.p3_pos-1)
+        self.prog_stack.append(self.p1_pos)
+
+    def _push_precondition(self):
+        return True
+
+    def _pop(self):
+        """Pop the first three element of the stack ad initialize pointers with them"""
+        assert self._pop_precondition(), "precondition not verified."
+        self.p1_pos = self.prog_stack.pop()
+        self.p2_pos = self.prog_stack.pop()
+        self.p3_pos = self.prog_stack.pop()
+
+    def _pop_precondition(self):
+        return length(self.prog_stack) >= 3
 
     def _compswap_precondition(self):
         bool = self.p1_pos < self.length-1
@@ -598,8 +663,24 @@ class QuickSortListEnv(Environment):
         bool &= self.p2_pos == 0
         return bool
 
+    def _compswap_partition_precondition(self):
+        bool = self.p1 <= self.p2
+        bool &= self.p3 == self.p1-1
+        return bool
+
+    def _partition_precondition(self):
+        bool = self.p1_pos <= self.p2_pos
+        bool &= self.p3_pos == self.p2_pos -1
+        return bool
+
+    def _quicksort_precondition(self):
+        bool = self.p1_pos == 0
+        bool &= self.p2_pos == self.length-1
+        bool &= self.p3_pos == self.p1_pos
+        return bool
+
     def _compswap_postcondition(self, init_state, state):
-        new_scratchpad_ints, new_p1_pos, new_p2_pos = init_state
+        new_scratchpad_ints, new_p1_pos, new_p2_pos,, new_p3_pos, new_stack = init_state
         new_scratchpad_ints = np.copy(new_scratchpad_ints)
         if new_p1_pos == new_p2_pos and new_p2_pos < self.length-1:
             new_p2_pos += 1
@@ -607,13 +688,14 @@ class QuickSortListEnv(Environment):
         idx_right = max(new_p1_pos, new_p2_pos)
         if new_scratchpad_ints[idx_left] > new_scratchpad_ints[idx_right]:
             new_scratchpad_ints[[idx_left, idx_right]] = new_scratchpad_ints[[idx_right, idx_left]]
-        new_state = (new_scratchpad_ints, new_p1_pos, new_p2_pos)
-        return self.compare_state(state, new_state)
+        new_state = (new_scratchpad_ints, new_p1_pos, new_p2_pos, new_p3_pos, new_stack)
+        return self.compare_state(new_state, init_state)
 
     def _lshift_postcondition(self, init_state, state):
-        init_scratchpad_ints, init_p1_pos, init_p2_pos = init_state
-        scratchpad_ints, p1_pos, p2_pos = state
+        init_scratchpad_ints, init_p1_pos, init_p2_pos, init_p3_pos, init_stack = init_state
+        scratchpad_ints, p1_pos, p2_pos, p3_pos, stack = state
         bool = np.array_equal(init_scratchpad_ints, scratchpad_ints)
+        bool = (init_stack == stack)
         if init_p1_pos > 0:
             bool &= p1_pos == (init_p1_pos-1)
         else:
@@ -622,12 +704,17 @@ class QuickSortListEnv(Environment):
             bool &= p2_pos == (init_p2_pos-1)
         else:
             bool &= p2_pos == init_p2_pos
+        if init_p3_pos > 0:
+            bool &= p3_pos == (init_p3_pos-1)
+        else:
+            bool &= p3_pos == init_p3_pos
         return bool
 
     def _rshift_postcondition(self, init_state, state):
-        init_scratchpad_ints, init_p1_pos, init_p2_pos = init_state
-        scratchpad_ints, p1_pos, p2_pos = state
+        init_scratchpad_ints, init_p1_pos, init_p2_pos, init_p3_pos, init_stack = init_state
+        scratchpad_ints, p1_pos, p2_pos, p3_pos, stack = state
         bool = np.array_equal(init_scratchpad_ints, scratchpad_ints)
+        bool &= (init_stack == stack)
         if init_p1_pos < self.length-1:
             bool &= p1_pos == (init_p1_pos+1)
         else:
@@ -636,22 +723,27 @@ class QuickSortListEnv(Environment):
             bool &= p2_pos == (init_p2_pos+1)
         else:
             bool &= p2_pos == init_p2_pos
+        if init_p3_pos < self.length-1:
+            bool &= p3_pos == (init_p3_pos+1)
+        else:
+            bool &= p3_pos == init_p3_pos
         return bool
 
     def _reset_postcondition(self, init_state, state):
-        init_scratchpad_ints, init_p1_pos, init_p2_pos = init_state
-        scratchpad_ints, p1_pos, p2_pos = state
+        init_scratchpad_ints, init_p1_pos, init_p2_pos, init_p3_pos, init_stack = init_state
+        scratchpad_ints, p1_pos, p2_pos, p3_pos, stack = state
         bool = np.array_equal(init_scratchpad_ints, scratchpad_ints)
-        bool &= (p1_pos == 0 and p2_pos == 0)
+        bool &= (init_stack == stack)
+        bool &= (p1_pos == 0 and p2_pos == 0 and p3_pos == 0)
         return bool
 
     def _bubblesort_postcondition(self, init_state, state):
-        scratchpad_ints, p1_pos, p2_pos = state
+        scratchpad_ints, p1_pos, p2_pos, p3_pos, stack = state
         # check if list is sorted
         return np.all(scratchpad_ints[:self.length-1] <= scratchpad_ints[1:self.length])
 
     def _bubble_postcondition(self, init_state, state):
-        new_scratchpad_ints, new_p1_pos, new_p2_pos = init_state
+        new_scratchpad_ints, new_p1_pos, new_p2_pos, new_p3_pos, stack = init_state
         new_scratchpad_ints = np.copy(new_scratchpad_ints)
         for idx in range(0, self.length-1):
             if new_scratchpad_ints[idx+1] < new_scratchpad_ints[idx]:
@@ -659,8 +751,46 @@ class QuickSortListEnv(Environment):
         # bubble is expected to terminate with both pointers at the extreme left of the list
         new_p1_pos = self.length-1
         new_p2_pos = self.length-1
-        new_state = (new_scratchpad_ints, new_p1_pos, new_p2_pos)
+        new_state = (new_scratchpad_ints, new_p1_pos, new_p2_pos, new_p3_pos, stack)
         return self.compare_state(state, new_state)
+
+    def _partition(arr, l, h, j):
+        temp_l = l
+        x = arr[h]
+        while(j<h):
+            if arr[j] <= x:
+                arr[[j, l]] = arr[[l, j]]
+                l += 1
+            j += 1
+        arr[[l,h]] = arr[[h,l]]
+        return arr, temp_l, h, l
+
+    def _compswap_partition_postcondition(self, init_state, state):
+        new_scratchpad_ints, new_p1_pos, new_p2_pos, new_p3_pos, stack = init_state
+        new_scratchpad_ints = np.copy(new_scratchpad_ints)
+        for idx in range(new_p1_pos, new_p2_pos):
+            if new_scratchpad_ints[idx] < new_scratchpad_ints[new_p2_pos]:
+                new_p1_pos += 1
+                new_scratchpad_ints[[new_p1_pos, idx]] = new_scratchpad_ints[[idx, new_p1_pos]]
+        # bubble is expected to terminate with both pointers at the extreme left of the list
+        new_p3_pos = new_p2_pos-1
+        new_state = (new_scratchpad_ints, new_p1_pos, new_p2_pos, new_p3_pos, stack)
+        return self.compare_state(state, new_state)
+
+    def _partition_postcondition(self, init_state, state):
+        new_scratchpad_ints, new_p1_pos, new_p2_pos, new_p3_pos, stack = init_state
+        new_scratchpad_ints = np.copy(new_scratchpad_ints)
+        arr, l, h, j = _partition(new_scratchpad_ints)
+        new_p1_pos = l
+        new_p2_pos = h
+        new_p3_pos = j
+        new_state = (arr, new_p1_pos, new_p2_pos, new_p3_pos, stack)
+        return self.compare_state(state, new_state)
+
+    def _quicksort_postcondition(self, init_state, state):
+        scratchpad_ints, p1_pos, p2_pos, p3_pos, stack = state
+        # check if list is sorted
+        return np.all(scratchpad_ints[:self.length-1] <= scratchpad_ints[1:self.length])
 
     def _one_hot_encode(self, digit, basis=10):
         """One hot encode a digit with basis.
@@ -695,10 +825,23 @@ class QuickSortListEnv(Environment):
 
         """
         self.scratchpad_ints = np.random.randint(10, size=self.length)
+        self.prog_stack = np.random.randint(10, size=(1 if length(self.scratchpad_ints[0]) == 0 else self.scratchpad_ints[0])).tolist()
         current_task_name = self.get_program_from_index(self.current_task_index)
         if current_task_name == 'BUBBLE' or current_task_name == 'BUBBLESORT':
             init_pointers_pos1 = 0
             init_pointers_pos2 = 0
+            init_pointers_pos3 = 0
+        elif current_task_name == 'PARTITION' or current_task_name == "COMPSWAP_PARTITION":
+            while True:
+                init_pointers_pos2 = int(np.random.randint(0, self.length))
+                if not (init_pointers_pos2 == 0):
+                    break
+                init_pointers_pos1 = int(np.random.randint(0, init_pointers_pos2+1))
+                init_pointers_pos3 = init_pointers_pos1
+        elif current_task_name == 'QUICKSORT':
+            init_pointers_pos1 = 0
+            init_pointers_pos2 = self.length-1
+            init_pointers_pos3 = 0
         elif current_task_name == 'RESET':
             while True:
                 init_pointers_pos1 = int(np.random.randint(0, self.length))
@@ -725,6 +868,7 @@ class QuickSortListEnv(Environment):
 
         self.p1_pos = init_pointers_pos1
         self.p2_pos = init_pointers_pos2
+        self.p3_pos = init_pointers_pos3
         self.has_been_reset = True
 
     def get_state(self):
@@ -735,7 +879,7 @@ class QuickSortListEnv(Environment):
 
         """
         assert self.has_been_reset, 'Need to reset the environment before getting states'
-        return np.copy(self.scratchpad_ints), self.p1_pos, self.p2_pos
+        return np.copy(self.scratchpad_ints), self.p1_pos, self.p2_pos, self.p3_pos, np.copy(self.prog_stack)
 
     def get_observation(self):
         """Returns an observation of the current state.
@@ -748,19 +892,27 @@ class QuickSortListEnv(Environment):
         p1_val = self.scratchpad_ints[self.p1_pos]
         p2_val = self.scratchpad_ints[self.p2_pos]
         is_sorted = int(self._is_sorted())
+        is_stack_empty = int(length(self.prog_stack) > 0)
         pointers_same_pos = int(self.p1_pos == self.p2_pos)
+        pointers_same_pos_2 = int(self.p2_pos == self.p3_pos)
         pt_1_left = int(self.p1_pos == 0)
         pt_2_left = int(self.p2_pos == 0)
         pt_1_right = int(self.p1_pos == (self.length - 1))
         pt_2_right = int(self.p2_pos == (self.length - 1))
+        pt_3_left = int(self.p3_pos == 0)
+        pt_3_right = int(self.p3_pos == (self.length - 1))
         p1p2 = np.eye(10)[[p1_val, p2_val]].reshape(-1)
         bools = np.array([
             pt_1_left,
             pt_1_right,
             pt_2_left,
             pt_2_right,
+            pt_3_left,
+            pt_3_right,
             pointers_same_pos,
-            is_sorted
+            pointers_same_pos_2,
+            is_sorted,
+            is_stack_empty
         ])
         return np.concatenate((p1p2, bools), axis=0)
 
@@ -770,7 +922,7 @@ class QuickSortListEnv(Environment):
         Returns:
             the size of the observation tensor
         """
-        return 2 * 10 + 6
+        return 2 * 10 + 10
 
     def reset_to_state(self, state):
         """
@@ -783,6 +935,8 @@ class QuickSortListEnv(Environment):
         self.scratchpad_ints = state[0].copy()
         self.p1_pos = state[1]
         self.p2_pos = state[2]
+        self.p3_pos = state[3]
+        self.prog_stack = state[4]
 
     def _is_sorted(self):
         """Assert is the list is sorted or not.
@@ -801,7 +955,9 @@ class QuickSortListEnv(Environment):
         scratchpad = state[0].copy()  # check
         p1_pos = state[1]
         p2_pos = state[2]
-        str = 'list: {}, p1 : {}, p2 : {}'.format(scratchpad, p1_pos, p2_pos)
+        p3_pos = state[3]
+        stack = state[4]
+        str = 'list: {}, p1 : {}, p2 : {}, p3: {}, stack: {}'.format(scratchpad, p1_pos, p2_pos, p3_pos, stack)
         return str
 
     def compare_state(self, state1, state2):
@@ -820,4 +976,6 @@ class QuickSortListEnv(Environment):
         bool &= np.array_equal(state1[0], state2[0])
         bool &= (state1[1] == state2[1])
         bool &= (state1[2] == state2[2])
+        bool &= (state1[3] == state2[3])
+        bool &= (state1[4] == state2[4])
         return bool
